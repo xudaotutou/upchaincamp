@@ -19,13 +19,15 @@ describe("counter", function () {
 
   it("Owner call", async () => {
     const { counter } = await loadFixture(deployCounter);
-    // await counter.count();
-    expect(await counter.count()).not.to.be.reverted;
-    // expect(await counter.val).to.be.equal(1)
+    await counter.count();
+    await counter.count()
+    // expect(counter.val).not.to.be.reverted;
+    expect(await counter.getVal()).to.be.equal(2)
   });
   it("Other call", async () => {
     const { counter, otherAccount } = await loadFixture(deployCounter);
-    expect( counter.connect(otherAccount).count()).to.be.reverted;
+    await expect( counter.connect(otherAccount).count()).to.be.revertedWith('error!');
+    expect(await counter.getVal()).to.be.equal(0)
     // expect(counter.val).to.be.equal(1)
   })
 })

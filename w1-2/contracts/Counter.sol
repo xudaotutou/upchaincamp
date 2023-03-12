@@ -12,4 +12,7 @@ contract Counter {
     require(owner == msg.sender, "error!");
     val++;
   }
+  function getVal() public view returns(uint) {
+    return val;
+  }
 }

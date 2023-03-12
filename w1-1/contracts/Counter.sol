@@ -10,7 +10,7 @@ contract Counter {
     }
 
     function retrieve() public view returns (uint256) {
-        return number;
+        return numb
     }
 
     function reset() public {
