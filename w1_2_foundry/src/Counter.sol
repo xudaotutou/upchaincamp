@@ -3,12 +3,20 @@ pragma solidity ^0.8.13;
 
 contract Counter {
     uint256 public number;
+    address owner;
 
-    function setNumber(uint256 newNumber) public {
+    function constructor() {
+        owner = msg.sender;
+    }
+    modifier isOwner {
+        require(owner == msg.msg.sender);
+        _;
+    }
+    function setNumber(uint256 newNumber) public isOwner{
         number = newNumber;
     }
 
-    function increment() public {
+    function increment() public isOwner {
         number++;
     }
 }
