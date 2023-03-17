@@ -2,21 +2,61 @@
 pragma solidity ^0.8.9;
 
 contract Bank {
-  mapping (address => uint) private accounts;
-  constructor() {
-  }
-  function deposit() payable public{
-    require(msg.value > 0 wei, "save too less");
-    accounts[msg.sender] += msg.value;
-  }
-  function balanceOf() public view returns(uint) {
-    return accounts[msg.sender];
-  }
-  function withdraw() payable public {
-    require(accounts[msg.sender] > 0 wei, "withdraw too more");
-    address payable account = payable(msg.sender);
-    uint money = accounts[msg.sender];
-    accounts[msg.sender] = 0 ether;
-    account.transfer(money);
-  }
+    mapping(address => uint) private accounts;
+    error NotZero();
+    error NotSuccess();
+    error NotEnough();
+
+    constructor() {}
+
+    modifier BalanceNotZero() {
+        if (accounts[msg.sender] == 0 wei) revert NotZero();
+        _;
+    }
+    modifier AmountNotZero(uint amount) {
+        if (0 == amount) revert NotZero();
+        _;
+    }
+    modifier BalanceNotEnough(uint amount) {
+        if (balanceOf() < amount) revert NotEnough();
+        _;
+    }
+
+    receive() external payable {
+        deposit();
+    }
+
+    function deposit() public payable AmountNotZero(msg.value) {
+        accounts[msg.sender] += msg.value;
+    }
+
+    function transferTo(address to, uint amount)
+        public
+        AmountNotZero(amount)
+        BalanceNotEnough(amount)
+    {
+        accounts[msg.sender] -= amount;
+        accounts[to] += amount;
+    }
+
+    function balanceOf() public view returns (uint) {
+        return accounts[msg.sender];
+    }
+
+    function withdrawSome(uint amount)
+        public
+        AmountNotZero(amount)
+        BalanceNotEnough(amount)
+    {
+        accounts[msg.sender] -= amount;
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) revert NotSuccess();
+    }
+
+    function withdraw() public BalanceNotZero {
+        uint money = accounts[msg.sender];
+        accounts[msg.sender] = 0 ether;
+        (bool success, ) = payable(msg.sender).call{value: money}("");
+        if (!success) revert NotSuccess();
+    }
 }
