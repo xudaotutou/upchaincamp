@@ -2,4 +2,7 @@
 	path = w1_2_foundry/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 [submodule "lib\\forge-std"]
-	branch = v1.5.1
+	branch = v1.5.2
+[submodule "w2_2_foundry/lib/forge-std"]
+	path = w2_2_foundry/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
