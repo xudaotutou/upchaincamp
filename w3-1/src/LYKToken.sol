@@ -215,10 +215,11 @@ pragma solidity ^0.8.13;
 //         emit Transfer(from, address(0), amount);
 //     }
 // }
+import "solmate/tokens/ERC20.sol";
 
-// contract LYKToken is ERC20 {
-//     constructor() ERC20("LYKT", "LH", 18) {
-//         // 发行 100, 000个token
-//         _mint(msg.sender, 100000 * 10 ** 18);
-//     }
-// }
+contract LYKToken is ERC20 {
+    constructor() ERC20("LYKT", "LH", 18) {
+        // 发行 100, 000个token
+        _mint(msg.sender, 100000 * 10 ** 18);
+    }
+}

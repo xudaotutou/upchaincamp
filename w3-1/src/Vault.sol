@@ -1,90 +1,34 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-// import "./LYKToken.sol";
-import "solmate/tokens/ERC20";
+
+// import "std-interfaces";
 import "solmate/utils/SafeTransferLib.sol";
+import "./LYKToken.sol";
 
-// interface IERC4626 {
-//     function asset() external view returns (address);
-
-//     function totalAssets() external view returns (uint256);
-
-//     function convertToShares(
-//         uint256 assets
-//     ) external view returns (uint256 shares);
-
-//     function convertToAssets(
-//         uint256 shares
-//     ) external view returns (uint256 assets);
-
-//     function maxDeposit(address receiver) external view returns (uint256);
-
-//     function previewDeposit(uint256 assets) external view returns (uint256);
-
-//     function deposit(
-//         uint256 assets,
-//         address receiver
-//     ) external returns (uint256 shares);
-
-//     function maxMint(address receiver) external view returns (uint256);
-
-//     function previewMint(uint256 shares) external view returns (uint256);
-
-//     function mint(
-//         uint256 shares,
-//         address receiver
-//     ) external returns (uint256 assets);
-
-//     function maxWithdraw(address owner) external view returns (uint256);
-
-//     function previewWithdraw(uint256 assets) external view returns (uint256);
-
-//     function withdraw(
-//         uint256 assets,
-//         address receiver,
-//         address owner
-//     ) external returns (uint256 shares);
-
-//     function maxRedeem(address owner) external view returns (uint256);
-
-//     function previewRedeem(uint256 shares) external view returns (uint256);
-
-//     function redeem(
-//         uint256 shares,
-//         address receiver,
-//         address owner
-//     ) external returns (uint256 assets);
-
-//     function totalSupply() external view returns (uint256);
-
-//     function balanceOf(address owner) external view returns (uint256);
-
-//     event Deposit(
-//         address indexed sender,
-//         address indexed owner,
-//         uint256 assets,
-//         uint256 shares
-//     );
-//     event Withdraw(
-//         address indexed sender,
-//         address indexed receiver,
-//         address indexed owner,
-//         uint256 assets,
-//         uint256 share
-//     );
+// interface IERC2612 is IERC20 {
+//     function permit(
+//         address owner,
+//         address spender,
+//         uint256 value,
+//         uint256 deadline,
+//         uint8 v,
+//         bytes32 r,
+//         bytes32 s
+//     ) external virtual;
+//     function DOMAIN_SEPARATOR() external view virtual returns (bytes32);
 // }
 // import "forge-std";
-contract Vault is ERC20 {
+contract Vault {
     using SafeTransferLib for address;
-
+    LYKToken immutable LYKT;
     mapping(address => uint) private accounts;
     error NotZero();
     error NotSuccess();
     error NotEnough();
 
-    constructor() ERC20("LYKT", "LH", 18) {
-        _mint(address(this), 100000 * 10 ** 18);
+    constructor(address lykt_address) {
+        LYKT = LYKToken(lykt_address);
     }
 
     modifier BalanceNotZero() {
@@ -104,7 +48,9 @@ contract Vault is ERC20 {
         deposit();
     }
 
-    function deposit() external payable AmountNotZero(msg.value) {
+    function deposit() public payable {
+        bool success = LYKT.transferFrom(msg.sender, address(this), msg.value);
+        if(!success) revert NotSuccess();
         accounts[msg.sender] += msg.value;
     }
 
@@ -112,20 +58,13 @@ contract Vault is ERC20 {
         return accounts[msg.sender];
     }
 
-    function withdrawSome(
+    function withdraw(
         uint amount
     ) external AmountNotZero(amount) BalanceNotEnough(amount) {
         accounts[msg.sender] -= amount;
-        try msg.sender.safeTransferETH(amount) {} catch {
+        try LYKT.transfer(msg.sender, amount) {} catch {
             revert NotSuccess();
         }
     }
 
-    function withdraw() external BalanceNotZero {
-        uint amount = accounts[msg.sender];
-        accounts[msg.sender] = 0;
-        try msg.sender.safeTransferETH(amount) {} catch {
-            revert NotSuccess();
-        }
-    }
 }

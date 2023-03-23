@@ -6,6 +6,9 @@
     "lib": "lib",
     "test": "test"
   },
+  "files": [
+    "src/**/*.sol"
+  ],
   "scripts": {
     "lint": "prettier --write ./src/**.sol"
   },
