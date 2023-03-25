@@ -4,14 +4,73 @@ pragma solidity ^0.8.13;
 import { Test } from "forge-std/Test.sol";
 import { Vault } from "../src/Vault.sol";
 import { LYKToken } from "../src/LYKToken.sol";
+pragma solidity 0.8.13;
+
+contract SigUtils {
+  bytes32 internal DOMAIN_SEPARATOR;
+
+  constructor(bytes32 _DOMAIN_SEPARATOR) {
+    DOMAIN_SEPARATOR = _DOMAIN_SEPARATOR;
+  }
+
+  // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+  bytes32 public constant PERMIT_TYPEHASH =
+    keccak256(
+      "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+    );
+  // 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+
+  struct Permit {
+    address owner;
+    address spender;
+    uint256 value;
+    uint256 nonce;
+    uint256 deadline;
+  }
+
+  // computes the hash of a permit
+  function getStructHash(
+    Permit memory _permit
+  ) internal pure returns (bytes32) {
+    return
+      keccak256(
+        abi.encode(
+          PERMIT_TYPEHASH,
+          _permit.owner,
+          _permit.spender,
+          _permit.value,
+          _permit.nonce,
+          _permit.deadline
+        )
+      );
+  }
+
+  // computes the hash of the fully encoded EIP-712 message for the domain, which can be used to recover the signer
+  function getTypedDataHash(
+    Permit memory _permit
+  ) public view returns (bytes32) {
+    return
+      keccak256(
+        abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, getStructHash(_permit))
+      );
+  }
+}
 
 contract VaultTest is Test {
-  LYKToken lyktoken;
-  Vault vault;
+  LYKToken internal lyktoken;
+  Vault internal vault;
+  SigUtils internal sigUtils;
+
+  address internal owner;
+  uint256 internal ownerPrivateKey;
 
   function setUp() public {
     lyktoken = new LYKToken();
     vault = new Vault(address(lyktoken));
+
+    sigUtils = new SigUtils(lyktoken.DOMAIN_SEPARATOR());
+    ownerPrivateKey = 0xB0B;
+    owner = vm.addr(ownerPrivateKey);
   }
 
   function testDeposit(uint256 amount) public {
@@ -23,6 +82,7 @@ contract VaultTest is Test {
     // counter.increment();
     // assertEq(counter.number(), 1);
   }
+
   function testDepositErr() public {
     lyktoken.approve(address(vault), 10);
     vm.expectRevert(abi.encodeWithSelector(Vault.NotZero.selector));
@@ -36,6 +96,7 @@ contract VaultTest is Test {
     vault.deposit(1000000 * 10 ** 18);
     assertEq(vault.balanceOf(), 5);
   }
+
   function testWithdraw(uint256 x, uint256 y) public {
     vm.assume(x > 0 && x <= 100000 * 10 ** 18);
     vm.assume(y > 0 && y <= x);
@@ -48,125 +109,66 @@ contract VaultTest is Test {
     assertEq(lyktoken.balanceOf(address(this)), 100000 * 10 ** 18 - x + y);
     assertEq(lyktoken.balanceOf(address(vault)), x - y);
   }
+
+  function testPermit(uint256 amount) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 100000e18);
+    // 先给owner钱
+    lyktoken.transfer(owner, amount);
+
+    SigUtils.Permit memory permit = SigUtils.Permit({
+      owner: owner,
+      spender: address(vault),
+      value: 100000e18,
+      nonce: 0,
+      deadline: 1 days
+    });
+
+    bytes32 digest = sigUtils.getTypedDataHash(permit);
+
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+
+    lyktoken.permit(owner, address(vault), 100000e18, 1 days, v, r, s);
+
+    assertEq(lyktoken.allowance(owner, address(vault)), 100000e18);
+    assertEq(lyktoken.nonces(owner), 1);
+    vm.prank(owner);
+    assertEq(vault.balanceOf(), 0);
+    vm.prank(owner);
+    vault.deposit(amount);
+    vm.prank(owner);
+    assertEq(vault.balanceOf(), amount);
+  }
+
+  function testPermitErr(uint256 amount) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 100000e18);
+    // 先给owner钱
+    lyktoken.transfer(owner, amount);
+
+    SigUtils.Permit memory permit = SigUtils.Permit({
+      owner: owner,
+      spender: address(vault),
+      value: 100000e18,
+      nonce: 0,
+      deadline: 1 days
+    });
+
+    bytes32 digest = sigUtils.getTypedDataHash(permit);
+
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
+    // 签名错误
+    vm.expectRevert("INVALID_SIGNER");
+    lyktoken.permit(address(this), address(vault), 100000e18, 1 days, v, r, s);
+    // 超时报错
+    skip(1 days + 1 seconds);
+    vm.expectRevert("PERMIT_DEADLINE_EXPIRED");
+    lyktoken.permit(owner, address(vault), 100000e18, 1 days, v, r, s);
+    
+    // 重放攻击
+    rewind(1 days);
+    lyktoken.permit(owner, address(vault), 100000e18, 1 days, v, r, s);
+    vm.expectRevert("INVALID_SIGNER");
+    lyktoken.permit(owner, address(vault), 100000e18, 1 days, v, r, s);
+  }
 }
-// contract ScoreTest is Test {
-//     Score public score;
-//     address payable[] internal users;
-
-//     function setUp() public {
-//         score = new Score();
-
-//         users = new address payable[](10);
-//         for (uint256 i = 0; i < 10; i++) {
-//             address payable newAddress = payable(
-//                 address(
-//                     bytes20(
-//                         keccak256(
-//                             abi.encodePacked(
-//                                 block.timestamp,
-//                                 block.difficulty,
-//                                 i
-//                             )
-//                         )
-//                     )
-//                 )
-//             );
-//             vm.deal(newAddress, 100 ether);
-//             users[i] = newAddress;
-//         }
-//     }
-
-//     function testAddScore(uint _score) public {
-//         vm.assume(_score >= 0);
-//         vm.assume(_score <= 100);
-//         address payable alice = users[0];
-//         score.addScore(alice, _score);
-//         assertEq(score.getScore(alice), _score);
-//     }
-
-//     function testAddScoreError() public {
-//         address payable alice = users[0];
-//         address payable bob = users[1];
-//         // 先插入一个成功的，用来判断是否存在
-//         score.addScore(bob, 10);
-
-//         // score.addScore(alice, 1000);
-//         // 1个报错
-//         vm.expectRevert(abi.encodeWithSelector(InvaildScore.selector));
-//         score.addScore(alice, 1000);
-
-//         vm.expectRevert(abi.encodeWithSelector(InvaildControl.selector));
-//         vm.prank(alice);
-//         score.addScore(alice, 100);
-
-//         vm.expectRevert(abi.encodeWithSelector(AlreadyStudent.selector));
-//         score.addScore(bob, 10);
-
-//         // 3个报错
-//         vm.expectRevert(abi.encodeWithSelector(InvaildControl.selector));
-//         vm.prank(alice);
-//         score.addScore(bob, 1000);
-
-//         // right + <100
-//         vm.expectRevert(abi.encodeWithSelector(InvaildControl.selector));
-//         vm.prank(alice);
-//         score.addScore(alice, 1000);
-
-//         // right + not exist
-//         vm.expectRevert(abi.encodeWithSelector(InvaildControl.selector));
-//         vm.prank(alice);
-//         score.addScore(bob, 100);
-
-//         // not exist + <100
-//         vm.expectRevert(abi.encodeWithSelector(InvaildScore.selector));
-//         score.addScore(bob, 1000);
-//     }
-
-//     function testModify(uint _score) public {
-//         vm.assume(_score <= 100);
-//         score.addScore(users[0], 0);
-//         score.modifyScore(users[0], _score);
-//         assertEq(score.getScore(users[0]), _score);
-//     }
-
-//     function testModifyError() public {
-//         address payable alice = users[0];
-//         score.addScore(alice, 10);
-//         //1个错误
-//         vm.expectRevert(abi.encodeWithSelector(InvaildScore.selector));
-//         score.modifyScore(alice, 1000);
-
-//         vm.expectRevert(abi.encodeWithSelector(InvaildControl.selector));
-//         vm.prank(alice);
-//         score.modifyScore(alice, 100);
-
-//         // 3个错误
-//         vm.expectRevert(abi.encodeWithSelector(NotFoundStudent.selector));
-//         score.modifyScore(users[2], 10);
-
-//         // 两两组合
-//         // right + <100
-//         vm.expectRevert(abi.encodeWithSelector(InvaildControl.selector));
-//         vm.prank(alice);
-//         score.modifyScore(alice, 1000);
-//         // exist + <100
-//         vm.expectRevert(abi.encodeWithSelector(InvaildScore.selector));
-//         score.modifyScore(users[2], 1000);
-//         // exist + right
-//         vm.expectRevert(abi.encodeWithSelector(InvaildControl.selector));
-//         vm.prank(alice);
-//         score.modifyScore(users[2], 100);
-//     }
-
-//     function testGetMyScore(uint _score) public {
-//         vm.assume(_score <= 100);
-//         score.addScore(address(this), _score);
-//         assertEq(score.getMyScore(), _score);
-//     }
-
-//     function testGetScore(uint _score) public {
-//         vm.assume(_score < 100);
-//         score.addScore(users[0], _score);
-//         assertEq(score.getScore(users[0]), _score);
-//     }
-// }

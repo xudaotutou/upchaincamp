@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-// import "std-interfaces";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { LYKToken } from "./LYKToken.sol";
-
+import {Icb} from "./LYKTokenCb.sol";
 // interface IERC2612 is IERC20 {
 //     function permit(
 //         address owner,
@@ -17,7 +16,6 @@ import { LYKToken } from "./LYKToken.sol";
 //     ) external virtual;
 //     function DOMAIN_SEPARATOR() external view virtual returns (bytes32);
 // }
-// import "forge-std";
 contract Vault is Icb {
   using SafeTransferLib for address;
   LYKToken immutable LYKT;
@@ -48,7 +46,7 @@ contract Vault is Icb {
   }
 
   function deposit(uint amount) external AmountNotZero(amount) {
-    depositWithAddress(msg.sender, amount)
+    depositWithAddress(msg.sender, amount);
   }
   function depositWithAddress(address account, uint amount) public AmountNotZero(amount) {
     try LYKT.transferFrom(account, address(this), amount) {
