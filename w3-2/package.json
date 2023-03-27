@@ -1,0 +1,19 @@
+{
+  "name": "w3-2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "lint": "prettier --write ./src/**.sol"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "^2.8.7",
+    "prettier-plugin-solidity": "^1.1.3"
+  }
+}
