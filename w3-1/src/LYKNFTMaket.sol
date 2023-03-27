@@ -55,6 +55,4 @@ contract LYKTItemMaket is IERC721Receiver {
     delete tokenIdPrice[tokenId];
     delete seller[tokenId];
   }
-
-
 }
