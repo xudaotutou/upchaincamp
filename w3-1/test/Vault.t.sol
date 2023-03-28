@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import { Test } from "forge-std/Test.sol";
 import { Vault } from "../src/Vault.sol";
 import { LYKToken } from "../src/LYKToken.sol";
-pragma solidity 0.8.13;
 
 contract SigUtils {
   bytes32 internal DOMAIN_SEPARATOR;
