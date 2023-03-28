@@ -2,30 +2,21 @@
 pragma solidity ^0.8.13;
 
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { LYKToken } from "./LYKToken.sol";
-import {Icb} from "./LYKTokenCb.sol";
-// interface IERC2612 is IERC20 {
-//     function permit(
-//         address owner,
-//         address spender,
-//         uint256 value,
-//         uint256 deadline,
-//         uint8 v,
-//         bytes32 r,
-//         bytes32 s
-//     ) external virtual;
-//     function DOMAIN_SEPARATOR() external view virtual returns (bytes32);
-// }
-contract Vault is Icb {
+import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+
+interface TokenRecipient {
+  function tokensReceived(address sender, uint amount) external returns (bool);
+}
+contract Vault is TokenRecipient {
   using SafeTransferLib for address;
-  LYKToken immutable LYKT;
+  IERC20 immutable LYKT;
   mapping(address => uint) private accounts;
   error NotZero();
   error NotSuccess();
   error NotEnough();
 
   constructor(address lykt_address) {
-    LYKT = LYKToken(lykt_address);
+    LYKT = IERC20(lykt_address);
   }
 
   modifier BalanceNotZero() {
@@ -48,6 +39,10 @@ contract Vault is Icb {
   function deposit(uint amount) external AmountNotZero(amount) {
     depositWithAddress(msg.sender, amount);
   }
+  function tokensReceived(address sender,uint amount) external returns (bool) {
+    depositWithAddress(sender, amount);
+    return true;
+  }
   function depositWithAddress(address account, uint amount) public AmountNotZero(amount) {
     try LYKT.transferFrom(account, address(this), amount) {
       accounts[account] += amount;
@@ -64,7 +59,6 @@ contract Vault is Icb {
   ) external AmountNotZero(amount) BalanceNotEnough(amount) {
     accounts[msg.sender] -= amount;
     try LYKT.transfer(msg.sender, amount) {
-
     } catch {
       revert NotSuccess();
     }
