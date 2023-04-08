@@ -111,14 +111,14 @@ contract VaultTest is Test {
 
   function testPermit(uint256 amount) public {
     vm.assume(amount > 0);
-    vm.assume(amount <= 100000e18);
+    vm.assume(amount < 100000e18);
     // 先给owner钱
     lyktoken.transfer(owner, amount);
 
     SigUtils.Permit memory permit = SigUtils.Permit({
       owner: owner,
       spender: address(vault),
-      value: 100000e18,
+      value: amount,
       nonce: 0,
       deadline: 1 days
     });
@@ -127,14 +127,17 @@ contract VaultTest is Test {
 
     (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPrivateKey, digest);
 
-    lyktoken.permit(owner, address(vault), 100000e18, 1 days, v, r, s);
+    vm.prank(owner);
+    vault.depositWithPermit(amount, 1 days, v, r, s);
+    
+    // lyktoken.permit(owner, address(vault), 100000e18, 1 days, v, r, s);
 
-    assertEq(lyktoken.allowance(owner, address(vault)), 100000e18);
-    assertEq(lyktoken.nonces(owner), 1);
-    vm.prank(owner);
-    assertEq(vault.balanceOf(), 0);
-    vm.prank(owner);
-    vault.deposit(amount);
+    // assertEq(lyktoken.allowance(owner, address(vault)), amount);
+    // assertEq(lyktoken.nonces(owner), 1);
+    // vm.prank(owner);
+    // assertEq(vault.balanceOf(), 0);
+    // vm.prank(owner);
+    // vault.deposit(amount);
     vm.prank(owner);
     assertEq(vault.balanceOf(), amount);
   }

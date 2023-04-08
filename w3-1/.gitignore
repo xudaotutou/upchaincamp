@@ -2,7 +2,7 @@
 cache/
 out/
 node_modules/
-
+calhost/
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/
