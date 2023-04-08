@@ -26,3 +26,6 @@
 [submodule "w5-1/lib/chainlink"]
 	path = w5-1/lib/chainlink
 	url = https://github.com/smartcontractkit/chainlink
+[submodule "w5-2/lib/forge-std"]
+	path = w5-2/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

@@ -30,7 +30,7 @@ contract AutoCollectUpKeep is AutomationCompatibleInterface {
     }
 
     function performUpkeep(bytes calldata performData) external override {
-        if (IERC20(token).balanceOf(bank) > 5e18) {
+        if (IERC20(token).balanceOf(bank) > 100e18) {
             IBank(bank).collect();
         }
     }
