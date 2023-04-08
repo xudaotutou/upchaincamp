@@ -2,21 +2,21 @@
 pragma solidity ^0.8.13;
 
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
 
 interface TokenRecipient {
   function tokensReceived(address sender, uint amount) external returns (bool);
 }
 contract Vault is TokenRecipient {
   using SafeTransferLib for address;
-  IERC20 immutable LYKT;
+  ERC20 immutable LYKT;
   mapping(address => uint) private accounts;
   error NotZero();
   error NotSuccess();
   error NotEnough();
 
   constructor(address lykt_address) {
-    LYKT = IERC20(lykt_address);
+    LYKT = ERC20(lykt_address);
   }
 
   modifier BalanceNotZero() {
@@ -53,7 +53,13 @@ contract Vault is TokenRecipient {
   function balanceOf() external view returns (uint) {
     return accounts[msg.sender];
   }
-
+  function depositWithPermit(uint amount, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
+    try LYKT.permit(msg.sender, address(this), amount, deadline, v, r, s) {
+      depositWithAddress(msg.sender, amount);
+    } catch {
+      revert NotSuccess();
+    }
+  }
   function withdraw(
     uint amount
   ) external AmountNotZero(amount) BalanceNotEnough(amount) {
