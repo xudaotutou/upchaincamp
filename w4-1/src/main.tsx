@@ -28,23 +28,13 @@ const apiKey = import.meta.env.VITE_INFURAID_ID;
 //     }
 //   }
 // };
-const { chains, provider, webSocketProvider } = configureChains(
-  [sepolia],
-  [
-    // infuraProvider({ apiKey: "2c505fc9a84e4c4a9316de7e3efe97677" }),
-    alchemyProvider({ apiKey: '92nK37m8wL340dCx_wTDPauSOnT9InON' }),
-    publicProvider(),
-  ],
-)
-const client = createClient(
-  getDefaultClient({
-    // autoConnect: true,
-    appName: "Vault",
-    chains,
-    provider,
-    webSocketProvider
-  }),
-);
+
+// connet to sepolia testnet with wagmi get chains, provider
+const {chains, provider} = configureChains([sepolia], [infuraProvider({apiKey}), alchemyProvider({apiKey}), publicProvider()])
+
+// create client with createClient
+const client = createClient(getDefaultClient({appName: "Vault", chains, provider}))
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <WagmiConfig client={client}>
